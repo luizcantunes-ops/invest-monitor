@@ -1,0 +1,551 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Investment</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+
+    <!-- ── Login gate ───────────────────────────────────────────────────── -->
+    <div id="login-gate" style="display:none" aria-modal="true" role="dialog">
+      <div class="login-card">
+        <div class="login-logo">F</div>
+        <div class="login-title">Finance Connect</div>
+        <div class="login-sub">Acesso privado</div>
+        <form id="login-form" autocomplete="off">
+          <input
+            id="login-password"
+            type="password"
+            placeholder="Senha"
+            autocomplete="current-password"
+            autofocus
+          />
+          <button type="submit">Entrar</button>
+          <p id="login-error" class="login-error" style="display:none">Senha incorreta.</p>
+        </form>
+      </div>
+    </div>
+
+    <nav class="navbar">
+      <div class="navbar-inner">
+        <a class="navbar-brand" href="/">
+          <div class="navbar-logo">F</div>
+          <span class="navbar-name">Finance Connect</span>
+        </a>
+      </div>
+    </nav>
+
+    <main class="shell">
+
+      <!-- ── Tab navigation ───────────────────────────────────────────── -->
+      <nav class="tab-nav" role="tablist">
+        <button class="tab-btn active" data-tab="hoje" role="tab">Hoje</button>
+        <button class="tab-btn" data-tab="carteira" role="tab">Carteira US</button>
+        <button class="tab-btn" data-tab="daytrade" role="tab">Day Trade</button>
+        <button class="tab-btn" data-tab="mercado" role="tab">Análise de Ativo</button>
+        <button class="tab-btn" data-tab="investidores" role="tab">Investidores &amp; Macro</button>
+        <button class="tab-btn" data-tab="screener" role="tab">Screener</button>
+        <button class="tab-btn" data-tab="brasil" role="tab">Brasil</button>
+        <button class="tab-btn" data-tab="riskbook" role="tab">Risk Book</button>
+      </nav>
+
+      <!-- ══════════════════════════════════════════════════════════════ -->
+      <!-- TAB: HOJE                                                       -->
+      <!-- ══════════════════════════════════════════════════════════════ -->
+      <section class="tab-panel active" id="tab-hoje" role="tabpanel">
+
+        <!-- ── Weekly Committee (executive summary) ───────────────── -->
+        <div id="wc-section" style="display:none">
+          <div id="wc-posture"></div>
+          <div id="wc-body"></div>
+        </div>
+
+        <div class="briefing-header" id="briefing-header">
+          <div id="briefing-date"></div>
+          <div class="briefing-totals" id="briefing-totals"></div>
+        </div>
+
+        <div id="briefing-loading" class="dt-loading">Carregando briefing da carteira...</div>
+
+        <div id="briefing-action" class="briefing-section"></div>
+        <div id="briefing-watch"  class="briefing-section"></div>
+        <div id="briefing-ok"     class="briefing-section"></div>
+
+        <div id="briefing-sectors" class="briefing-section"></div>
+
+        <!-- ── Política de Investimento ───────────────────────────── -->
+        <div id="policy-section" class="briefing-section" style="display:none">
+          <div class="section-label" style="display:flex;align-items:center;justify-content:space-between">
+            <span>Política de Investimento</span>
+            <button id="policy-edit-btn" class="policy-edit-btn">Editar regras</button>
+          </div>
+          <div id="policy-violations"></div>
+          <div id="policy-edit-panel" style="display:none"></div>
+        </div>
+
+      </section>
+
+      <!-- ══════════════════════════════════════════════════════════════ -->
+      <!-- TAB: CARTEIRA                                                  -->
+      <!-- ══════════════════════════════════════════════════════════════ -->
+      <section class="tab-panel" id="tab-carteira" role="tabpanel">
+
+        <!-- Upload area -->
+        <div class="upload-zone" id="upload-zone">
+          <div class="upload-icon">📂</div>
+          <div class="upload-title">Carteira Charles Schwab</div>
+          <div class="upload-sub" id="upload-sub">Detecta automaticamente o CSV mais recente em Downloads</div>
+          <button class="upload-btn" id="load-local-btn">Carregar extrato mais recente</button>
+          <div class="upload-divider">ou</div>
+          <label class="upload-btn upload-btn-secondary">
+            Selecionar arquivo manualmente
+            <input type="file" id="csv-file-input" accept=".csv" />
+          </label>
+        </div>
+
+        <!-- Portfolio header (hidden until loaded) -->
+        <div class="port-header" id="port-header" hidden>
+          <div class="port-kpis" id="port-kpis"></div>
+          <div class="port-filters">
+            <button class="filter-btn active" data-filter="all">Todos</button>
+            <button class="filter-btn" data-filter="long">Long Term</button>
+            <button class="filter-btn" data-filter="swing">Swing</button>
+          </div>
+        </div>
+
+        <!-- Position cards -->
+        <div class="positions-list" id="positions-list"></div>
+
+      </section>
+
+      <!-- ══════════════════════════════════════════════════════════════ -->
+      <!-- ══════════════════════════════════════════════════════════════ -->
+      <!-- TAB: DAY TRADE                                                -->
+      <!-- ══════════════════════════════════════════════════════════════ -->
+      <section class="tab-panel" id="tab-daytrade" role="tabpanel">
+
+        <div class="dt-header">
+          <div>
+            <div class="dt-title">Day Trade Advisor</div>
+            <div class="dt-sub">ORB 15min · VWAP · RVOL · Força relativa vs SPY</div>
+          </div>
+          <div class="dt-header-right">
+            <div class="dt-regime" id="dt-regime">—</div>
+            <button id="dt-refresh-btn">↻ Atualizar</button>
+          </div>
+        </div>
+
+        <div class="dt-legend">
+          <span class="dt-badge setup">SETUP</span> Todos critérios atendidos — pode operar &nbsp;·&nbsp;
+          <span class="dt-badge watch">WATCH</span> Quase lá — aguardar confirmação &nbsp;·&nbsp;
+          <span class="dt-badge evitar">EVITAR</span> Sem condições hoje
+        </div>
+
+        <div id="dt-filter-bar" class="dt-filter-bar">
+          <button class="filter-btn active" data-dtfilter="all" title="Mostrar todos os ativos">Todos</button>
+          <button class="filter-btn" data-dtfilter="SETUP" title="Apenas ativos prontos para operar">✅ Prontos</button>
+          <button class="filter-btn" data-dtfilter="WATCH" title="Ativos que precisam de confirmação">⏳ Aguardando</button>
+          <button class="filter-btn" data-dtfilter="EVITAR" title="Ativos sem setup hoje">❌ Sem setup</button>
+          <button class="filter-btn" data-dtfilter="long" title="Filtrar por ativos de longo prazo da sua carteira">📌 Long Term</button>
+          <button class="filter-btn" data-dtfilter="swing" title="Filtrar por ativos táticos da sua carteira">⚡ Swing</button>
+        </div>
+
+        <div id="dt-loading" class="dt-loading">Carregando dados intraday...</div>
+        <div id="dt-cards" class="dt-cards"></div>
+
+      </section>
+
+      <!-- TAB: MERCADO                                                   -->
+      <!-- ══════════════════════════════════════════════════════════════ -->
+      <section class="tab-panel" id="tab-mercado" role="tabpanel">
+
+        <div class="mercado-search">
+          <form class="search" id="quote-form">
+            <div class="search-row">
+              <input id="symbol" name="symbol" value="AAPL" autocomplete="off" spellcheck="false" placeholder="Ticker — ex: AAPL, MSFT, NVDA" />
+              <button type="submit">Buscar</button>
+            </div>
+          </form>
+        </div>
+
+      <section class="status-strip" id="status-strip" aria-live="polite">
+        <span class="dot"></span>
+        <span>Pronto para consultar.</span>
+      </section>
+
+      <section class="decision-strip" aria-label="Resumo de decisão">
+        <div>
+          <span>Regime SPY</span>
+          <strong id="decision-regime">—</strong>
+        </div>
+        <div>
+          <span>VIX</span>
+          <strong id="decision-vix">—</strong>
+        </div>
+        <div>
+          <span>Swing</span>
+          <strong id="decision-swing">—</strong>
+        </div>
+        <div>
+          <span>Sentimento</span>
+          <strong id="decision-sentiment">Pendente</strong>
+        </div>
+        <div>
+          <span>Postura</span>
+          <strong id="decision-posture">Seletiva</strong>
+        </div>
+        <!-- decision-portfolio mantido invisível — usado pelo JS da aba Carteira -->
+        <strong id="decision-portfolio" style="display:none">Sem posições</strong>
+      </section>
+
+      <section class="workspace">
+        <aside class="side-stack">
+          <section class="quote-panel">
+          <div class="panel-title">
+            <span>Cotação</span>
+            <strong id="market-state">--</strong>
+          </div>
+
+          <div class="quote-main">
+            <span id="quote-symbol">--</span>
+            <strong id="quote-price">--</strong>
+            <small id="quote-change">--</small>
+          </div>
+
+          <dl class="quote-meta">
+            <div>
+              <dt>Bolsa</dt>
+              <dd id="quote-exchange">--</dd>
+            </div>
+            <div>
+              <dt>Moeda</dt>
+              <dd id="quote-currency">--</dd>
+            </div>
+            <div>
+              <dt>Fechamento anterior</dt>
+              <dd id="quote-previous">--</dd>
+            </div>
+          </dl>
+
+          <div class="mini-chart" id="mini-chart"></div>
+          </section>
+
+          <!-- ── Swing Trade Panel ──────────────────────────── -->
+          <section class="swing-panel" id="swing-panel" style="display:none">
+            <div class="panel-title">
+              <span>Swing Trade</span>
+              <strong id="swing-score-badge">—</strong>
+            </div>
+            <div id="swing-decision-row" class="swing-decision-row"></div>
+            <div id="swing-levels" class="swing-levels"></div>
+            <div id="swing-checklist" class="swing-checklist"></div>
+          </section>
+
+          <section class="analyst-panel">
+            <div class="panel-title">
+              <span>Analistas</span>
+              <strong id="analysis-source">Yahoo</strong>
+            </div>
+
+            <div class="analyst-summary">
+              <span id="recommendation-label">--</span>
+              <strong id="target-mean">--</strong>
+              <small id="analyst-count">--</small>
+            </div>
+
+            <dl class="quote-meta compact">
+              <div>
+                <dt>Preço-alvo baixo</dt>
+                <dd id="target-low">--</dd>
+              </div>
+              <div>
+                <dt>Preço-alvo mediano</dt>
+                <dd id="target-median">--</dd>
+              </div>
+              <div>
+                <dt>Preço-alvo alto</dt>
+                <dd id="target-high">--</dd>
+              </div>
+            </dl>
+
+            <div class="recommendation-bars" id="recommendation-bars"></div>
+
+            <div class="mini-list">
+              <div class="mini-list-title">Mudanças recentes</div>
+              <div id="upgrade-list"></div>
+            </div>
+          </section>
+        </aside>
+
+        <section class="chart-panel">
+          <div class="panel-title">
+            <span>Gráfico</span>
+            <a id="tradingview-link" href="https://www.tradingview.com/chart/?symbol=NASDAQ%3AAAPL" target="_blank" rel="noreferrer">Abrir gráfico</a>
+          </div>
+          <div class="local-chart" id="local-chart"></div>
+          <div class="tradingview-widget-container">
+            <div id="tradingview-widget"></div>
+          </div>
+        </section>
+
+        <section class="reading-panel">
+          <div class="panel-title">
+            <span>Leitura gráfica</span>
+            <strong id="reading-bias">--</strong>
+          </div>
+
+          <div class="reading-metrics">
+            <div>
+              <span>Tendência</span>
+              <strong id="reading-trend">--</strong>
+            </div>
+            <div>
+              <span>Momento</span>
+              <strong id="reading-momentum">--</strong>
+            </div>
+            <div>
+              <span>RSI 14</span>
+              <strong id="reading-rsi">--</strong>
+            </div>
+            <div>
+              <span>Volume</span>
+              <strong id="reading-volume">--</strong>
+            </div>
+          </div>
+
+          <div class="reading-columns">
+            <article>
+              <h2>Analítica</h2>
+              <ul id="reading-analytical"></ul>
+            </article>
+            <article>
+              <h2>Prescritiva</h2>
+              <ul id="reading-prescriptive"></ul>
+            </article>
+            <article>
+              <h2>Didática</h2>
+              <ul id="reading-didactic"></ul>
+            </article>
+          </div>
+        </section>
+
+        <section class="sentiment-panel">
+          <div class="panel-title">
+            <span>Sentimento de mercado</span>
+            <strong id="sentiment-source">Alpha Vantage</strong>
+          </div>
+
+          <div class="sentiment-summary">
+            <div>
+              <span>Leitura</span>
+              <strong id="sentiment-label">--</strong>
+            </div>
+            <div>
+              <span>Score médio</span>
+              <strong id="sentiment-score">--</strong>
+              <small>Escala -1 a +1</small>
+            </div>
+            <div>
+              <span>Relevância média</span>
+              <strong id="sentiment-relevance">--</strong>
+              <small>Escala 0 a 1</small>
+            </div>
+            <div>
+              <span>Notícias</span>
+              <strong id="sentiment-count">--</strong>
+            </div>
+          </div>
+
+          <div class="news-list" id="news-list">
+            <p class="muted-note">Configure ALPHA_VANTAGE_API_KEY para carregar sentimento.</p>
+          </div>
+
+          <div class="metric-explainer">
+            <p><strong>Score médio:</strong> mede o tom das notícias sobre o ativo. Valores perto de -1 indicam pessimismo, 0 indica neutralidade e +1 indica otimismo.</p>
+            <p><strong>Relevância média:</strong> mede o quanto as notícias são diretamente ligadas ao ticker. Quanto mais perto de 1, mais específica é a notícia para aquele ativo.</p>
+          </div>
+        </section>
+
+        <section class="alternative-panel">
+          <div class="panel-title">
+            <span>Sinais alternativos</span>
+            <strong id="alternative-source">OpenInsider · Quiver</strong>
+          </div>
+
+          <div class="alternative-grid">
+            <article>
+              <div class="panel-title">
+                <span>Insiders</span>
+                <strong id="insider-signal">--</strong>
+              </div>
+              <dl class="alt-metrics">
+                <div><dt>Compras 90d</dt><dd id="insider-purchases">--</dd></div>
+                <div><dt>CEO/CFO/Diretor</dt><dd id="insider-officer-purchases">--</dd></div>
+                <div><dt>Total comprado</dt><dd id="insider-total-bought">--</dd></div>
+                <div><dt>Vendas 90d</dt><dd id="insider-sales">--</dd></div>
+              </dl>
+              <div class="mini-list" id="insider-list"></div>
+            </article>
+
+            <article>
+              <div class="panel-title">
+                <span>Congresso EUA</span>
+                <strong id="congress-signal">--</strong>
+              </div>
+              <p class="muted-note" id="congress-note">Carregando Quiver...</p>
+              <a id="congress-link" href="https://www.quiverquant.com/congresstrading/" target="_blank" rel="noreferrer">Abrir Quiver</a>
+            </article>
+          </div>
+        </section>
+      </section><!-- end workspace -->
+      </section><!-- end tab-mercado -->
+
+      <!-- ══════════════════════════════════════════════════════════════ -->
+      <!-- ══════════════════════════════════════════════════════════════ -->
+      <!-- TAB: INVESTIDORES & MACRO                                     -->
+      <!-- ══════════════════════════════════════════════════════════════ -->
+      <section class="tab-panel" id="tab-investidores" role="tabpanel">
+
+        <div class="macro-page-header">
+          <div>
+            <div class="dt-title">Investidores &amp; Regime de Mercado</div>
+            <div class="dt-sub">Dataroma 13F · ARK · Regime macro · VIX · Shiller PE · Buffett Indicator · Setores · Calendário</div>
+          </div>
+          <button id="inv-refresh-btn">↻ Atualizar</button>
+        </div>
+
+        <!-- ── Regime de mercado ──────────────────────────────────── -->
+        <div class="section-label">Regime de Mercado</div>
+
+        <div class="market-regime-summary" id="macro-kpis" style="margin-bottom:16px">
+          <div><span>S&amp;P 500</span><strong id="macro-sp500">—</strong></div>
+          <div><span>VIX</span><strong id="macro-vix">—</strong></div>
+          <div><span>Yield 10Y</span><strong id="macro-yield10">—</strong></div>
+          <div><span>Spread curva</span><strong id="macro-spread">—</strong></div>
+        </div>
+
+        <div class="macro-indicators" id="macro-indicators" style="margin-bottom:8px"><p class="muted-note">Carregando indicadores...</p></div>
+        <p class="muted-note" style="margin-bottom:24px">Filtro de risco: quanto pior o regime, maior a exigência para adicionar risco e maior a atenção a realizações parciais.</p>
+
+        <!-- ── Grandes Fundos ─────────────────────────────────────── -->
+        <div class="section-label">Grandes Fundos — Dataroma 13F</div>
+        <div class="investor-grid" id="investor-list"><p class="muted-note">Carregando...</p></div>
+
+        <div class="section-label">ARK Innovation — Atualização Diária</div>
+        <div id="ark-panel"><p class="muted-note">Carregando ARK...</p></div>
+
+        <!-- ── Setores e calendário ───────────────────────────────── -->
+        <div class="section-label" style="margin-top:32px">Performance por Setor</div>
+        <div id="macro-sectors"><p class="muted-note">Carregando setores...</p></div>
+
+        <div class="macro-calendars" style="margin-top:24px">
+          <div>
+            <div class="section-label">Calendário Econômico — 14 dias</div>
+            <div id="macro-calendar"><p class="muted-note">Carregando...</p></div>
+          </div>
+          <div>
+            <div class="section-label">Earnings da Carteira</div>
+            <div id="macro-earnings"><p class="muted-note">Carregando...</p></div>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- TAB: SCREENER                                                  -->
+      <!-- ══════════════════════════════════════════════════════════════ -->
+      <section class="tab-panel" id="tab-screener" role="tabpanel">
+
+        <div class="macro-page-header">
+          <div>
+            <div class="dt-title">Swing Screener</div>
+            <div class="dt-sub">~200 ativos · upside · EBITDA · EV/EBITDA · receita · técnico</div>
+          </div>
+          <button id="screener-run-btn">▶ Rodar screener</button>
+        </div>
+
+        <div id="screener-status" class="muted-note"></div>
+        <div id="screener-cards"></div>
+
+      </section>
+
+      <!-- TAB: BRASIL                                                    -->
+      <!-- ══════════════════════════════════════════════════════════════ -->
+      <section class="tab-panel" id="tab-brasil" role="tabpanel">
+
+        <div class="macro-page-header">
+          <div>
+            <div class="dt-title">Carteira Brasil</div>
+            <div class="dt-sub">Itaú Personnalité · R$ 2.579.940 · Monitor cripto</div>
+          </div>
+        </div>
+
+        <div id="brasil-content"><p class="muted-note">Carregando...</p></div>
+
+      </section>
+
+      <!-- ══════════════════════════════════════════════════════════════ -->
+      <!-- TAB: RISK BOOK                                                 -->
+      <!-- ══════════════════════════════════════════════════════════════ -->
+      <section class="tab-panel" id="tab-riskbook" role="tabpanel">
+
+        <div class="macro-page-header">
+          <div>
+            <div class="dt-title">Risk Book</div>
+            <div class="dt-sub">Concentração · Exposição · Política · Recomendações</div>
+          </div>
+          <button id="rb-refresh-btn">↻ Atualizar</button>
+        </div>
+
+        <div id="rb-loading" class="dt-loading">Calculando métricas de risco...</div>
+        <div id="rb-content" style="display:none">
+
+          <div class="rb-grid-top">
+            <div id="rb-summary"></div>
+            <div id="rb-exposure"></div>
+            <div id="rb-crypto"></div>
+          </div>
+
+          <div class="section-label" style="margin-top:24px">Top 5 Posições</div>
+          <div id="rb-top5"></div>
+
+          <div class="section-label" style="margin-top:24px">Concentração Setorial</div>
+          <div id="rb-sectors"></div>
+
+          <div class="section-label" style="margin-top:24px">Alertas</div>
+          <div id="rb-alerts"></div>
+
+          <div class="section-label" style="margin-top:24px">Recomendações</div>
+          <div id="rb-recommendations"></div>
+
+          <!-- Decision Memo panel -->
+          <div class="section-label" style="margin-top:24px">Analisar Decisão</div>
+          <div class="dm-form-wrap">
+            <form id="dm-form" class="dm-form">
+              <select name="symbol" id="dm-symbol" required>
+                <option value="">Selecionar ativo...</option>
+              </select>
+              <select name="action" required>
+                <option value="buy">Comprar</option>
+                <option value="add">Aumentar posição</option>
+                <option value="hold" selected>Manter</option>
+                <option value="reduce">Reduzir</option>
+                <option value="sell">Vender</option>
+              </select>
+              <input type="text" name="rationale" placeholder="Seu raciocínio (opcional)" />
+              <button type="submit">Analisar</button>
+            </form>
+            <div id="dm-result"></div>
+          </div>
+
+        </div>
+      </section>
+
+    </main>
+
+    <script src="/app.js" type="module"></script>
+  </body>
+</html>
