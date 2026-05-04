@@ -1076,7 +1076,7 @@ async function serveStatic(request, response, pathname) {
   }
 }
 
-const PYTHON_API = process.env.PYTHON_API_URL || "http://127.0.0.1:8000";
+const PYTHON_API = process.env.PYTHON_API_URL || "http://127.0.0.1:9000";
 
 // ── Horizon map — read once from portfolio_us.csv ──────────────────────────
 function loadHorizonMap() {

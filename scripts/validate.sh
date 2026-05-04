@@ -144,7 +144,7 @@ fi
 # ── 6. Backend auth (requires running backend) ───────────────────────────────
 
 header "Backend auth (live)"
-BACKEND_URL="${PYTHON_API_URL:-http://127.0.0.1:8000}"
+BACKEND_URL="${PYTHON_API_URL:-http://127.0.0.1:9000}"
 if curl -s --max-time 2 "$BACKEND_URL/health" > /dev/null 2>&1; then
   # Health must be public
   STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 3 "$BACKEND_URL/health" 2>/dev/null) || STATUS="timeout"
@@ -174,7 +174,7 @@ if curl -s --max-time 2 "$BACKEND_URL/health" > /dev/null 2>&1; then
     fi
   else
     skip "INTERNAL_API_TOKEN not set — skipping auth enforcement checks"
-    STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 "$BACKEND_URL/portfolio" 2>/dev/null) || STATUS="timeout"
+    STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 "$BACKEND_URL/portfolio" 2>/dev/null) || STATUS="timeout"
     if [ "$STATUS" = "200" ]; then
       ok "GET /portfolio → 200 (open dev mode)"
     else

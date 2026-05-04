@@ -48,7 +48,7 @@ Rules:
 /Users/macbook/Documents/Projects/Invest/        ← DIRETÓRIO ÚNICO DE TRABALHO
 ├── CLAUDE.md                           ← ESTE ARQUIVO — leia primeiro
 ├── PRODUCT.md                          ← Contexto de produto para /impeccable
-├── src/                                ← Backend Python — porta 8000
+├── src/                                ← Backend Python — porta 9000
 │   ├── api.py                          ← FastAPI
 │   ├── scheduler.py                    ← APScheduler — alertas automáticos
 │   ├── core/
@@ -89,7 +89,7 @@ Os diretórios antigos (`invest_monitor/` e `New project 2/`) foram deletados.
 ```bash
 # Backend (FastAPI) — porta 8000
 cd /Users/macbook/Documents/Projects/Invest/src
-python3 -m uvicorn api:app --port 8000 --host 127.0.0.1
+python3 -m uvicorn api:app --port 9000 --host 127.0.0.1
 
 # Frontend (Node.js) — porta 3001
 cd /Users/macbook/Documents/Projects/Invest/frontend
