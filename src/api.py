@@ -31,6 +31,7 @@ from data.config      import (
     MACRO_SHILLER_PE, MACRO_BUFFETT_IND, INTERNAL_API_TOKEN,
 )
 from core.brasil      import get_brasil_summary
+from core.db          import load_policy, save_policy, load_thesis, save_thesis_entry, log_decision
 
 import pandas as pd
 
@@ -98,35 +99,11 @@ def briefing():
 
 # ── Policy ────────────────────────────────────────────────────────────────────
 
-_POLICY_PATH = os.path.join(os.path.dirname(__file__), "data", "policy.json")
-_THESIS_PATH  = os.path.join(os.path.dirname(__file__), "data", "thesis.json")
-
-
-def _atomic_write_json(path: str, data: dict) -> None:
-    """Write JSON atomically using a temp file + os.replace to avoid corruption."""
-    tmp = f"{path}.tmp"
-    with open(tmp, "w") as f:
-        json.dump(data, f, indent=2, ensure_ascii=False)
-        f.write("\n")
-    os.replace(tmp, path)
-
-
-def _load_json(path: str, label: str) -> dict:
-    try:
-        with open(path) as f:
-            return json.load(f)
-    except FileNotFoundError:
-        return {}
-    except json.JSONDecodeError as e:
-        logger.error("Corrupt JSON at %s: %s", path, e)
-        raise HTTPException(status_code=500, detail=f"Config file corrupted: {label}")
-
-
 def _load_policy() -> dict:
-    return _load_json(_POLICY_PATH, "policy.json")
+    return load_policy()
 
 def _save_policy(data: dict) -> None:
-    _atomic_write_json(_POLICY_PATH, data)
+    save_policy(data)
 
 
 class PolicyUpdate(BaseModel):
@@ -170,10 +147,10 @@ def policy_check():
 # ── Thesis ────────────────────────────────────────────────────────────────────
 
 def _load_thesis() -> dict:
-    return _load_json(_THESIS_PATH, "thesis.json")
+    return load_thesis()
 
-def _save_thesis(data: dict) -> None:
-    _atomic_write_json(_THESIS_PATH, data)
+def _save_thesis_entry(symbol: str, entry: dict) -> None:
+    save_thesis_entry(symbol, entry)
 
 
 class ThesisEntry(BaseModel):
@@ -197,18 +174,16 @@ def get_thesis(symbol: str):
 @app.put("/thesis/{symbol}")
 def upsert_thesis(symbol: str, entry: ThesisEntry):
     from datetime import date
-    all_thesis = _load_thesis()
     sym = symbol.upper()
-    all_thesis[sym] = {
+    data = {
         "reason":      entry.reason.strip(),
         "sell_if":     entry.sell_if.strip(),
         "main_risk":   entry.main_risk.strip(),
         "last_review": entry.last_review or date.today().isoformat(),
     }
-    _save_thesis(all_thesis)
-    # Invalidate briefing cache so it reflects updated thesis state
+    _save_thesis_entry(sym, data)
     _cache.pop("briefing", None)
-    return all_thesis[sym]
+    return data
 
 
 # ── Portfolio ─────────────────────────────────────────────────────────────────
@@ -543,7 +518,9 @@ def decision_memo(req: DecisionMemoRequest):
     policy = _load_policy()
     csv    = os.path.join(os.path.dirname(__file__), "data", "portfolio_us.csv")
     b      = _cached("briefing", 600, lambda: get_briefing(csv))
-    return get_decision_memo(sym, req.action, req.rationale or "", asset, thesis, policy, b)
+    result = get_decision_memo(sym, req.action, req.rationale or "", asset, thesis, policy, b)
+    log_decision(sym, req.action, req.rationale or "", result)
+    return result
 
 
 # ── Weekly Committee ──────────────────────────────────────────────────────────
