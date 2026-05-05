@@ -114,6 +114,8 @@ class PolicyUpdate(BaseModel):
     swing_max_loss_pct:  Optional[float] = None
     crypto_br_min_pct:   Optional[float] = None
     crypto_br_max_pct:   Optional[float] = None
+    macro_shiller_pe:    Optional[float] = None
+    macro_buffett_ind:   Optional[float] = None
     note:                Optional[str]   = None
 
 
@@ -324,11 +326,14 @@ def macro():
 @app.get("/macro/full")
 def macro_full():
     try:
-        raw = _cached("macro", 900, get_macro_data)
+        raw    = _cached("macro", 900, get_macro_data)
+        policy = _load_policy()
+        shiller = policy.get("macro_shiller_pe", MACRO_SHILLER_PE)
+        buffett = policy.get("macro_buffett_ind", MACRO_BUFFETT_IND)
         return {
             "raw":               raw,
-            "shiller_pe":        describe_shiller_pe(MACRO_SHILLER_PE),
-            "buffett_indicator": describe_buffett_indicator(MACRO_BUFFETT_IND),
+            "shiller_pe":        describe_shiller_pe(shiller),
+            "buffett_indicator": describe_buffett_indicator(buffett),
             "vix":               describe_vix_full(raw.get("vix")),
             "yield_curve":       describe_yield_curve_full(
                                      raw.get("yield_spread"),

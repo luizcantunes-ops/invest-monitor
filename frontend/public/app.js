@@ -1644,6 +1644,8 @@ function renderPolicyEditPanel(el, policy) {
     { key: "max_sector_pct",    label: "Setor máximo (%)",       step: "1" },
     { key: "min_cash_pct",      label: "Caixa mínimo (%)",       step: "1" },
     { key: "swing_max_loss_pct",label: "Perda max swing (%)",    step: "1" },
+    { key: "macro_shiller_pe",  label: "Shiller PE (CAPE)",      step: "0.1" },
+    { key: "macro_buffett_ind", label: "Buffett Indicator (%)",  step: "1" },
   ];
 
   el.innerHTML = `
