@@ -2070,9 +2070,22 @@ h2 { font-size: 14px; font-weight: 700; }
 .dm-check > span:first-child { font-weight: 700; color: oklch(52% 0.14 145); min-width: 14px; }
 .dm-check:not(.done) > span:first-child { color: oklch(70% 0.01 260); }
 
+/* ── Decision history ──────────────────────────────────────────── */
+.dh-row { border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; margin-bottom: 8px; background: var(--card); }
+.dh-row-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.dh-sym { font-weight: 700; font-size: 14px; min-width: 56px; }
+.dh-action { font-size: 12px; color: var(--muted); padding: 2px 8px; border: 1px solid var(--border); border-radius: 4px; }
+.dh-verdict { font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 4px; }
+.dh-verdict-ok { background: oklch(96% 0.04 145); color: oklch(45% 0.16 145); }
+.dh-verdict-warn { background: oklch(96% 0.05 60); color: oklch(50% 0.16 60); }
+.dh-verdict-neutral { background: oklch(96% 0.005 260); color: var(--muted); }
+.dh-date { margin-left: auto; font-size: 11px; color: var(--muted); }
+.dh-rationale { margin: 6px 0 0; font-size: 12px; color: var(--muted); line-height: 1.4; }
+
 @media (max-width: 900px) {
   .rb-grid-top { grid-template-columns: 1fr; }
   .wc-body     { grid-template-columns: 1fr; }
   .dm-kpis     { grid-template-columns: 1fr 1fr; }
   .dm-checklist { grid-template-columns: 1fr; }
+  .dh-date     { margin-left: 0; width: 100%; }
 }

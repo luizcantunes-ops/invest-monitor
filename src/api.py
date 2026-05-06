@@ -31,7 +31,7 @@ from data.config      import (
     MACRO_SHILLER_PE, MACRO_BUFFETT_IND, INTERNAL_API_TOKEN,
 )
 from core.brasil      import get_brasil_summary
-from core.db          import load_policy, save_policy, load_thesis, save_thesis_entry, log_decision
+from core.db          import load_policy, save_policy, load_thesis, save_thesis_entry, log_decision, list_decisions
 
 import pandas as pd
 
@@ -227,6 +227,43 @@ def portfolio():
         except Exception as e:
             result.append({"symbol": row["symbol"], "error": str(e)})
     return result
+
+
+class PortfolioUpload(BaseModel):
+    csv: str
+
+
+@app.post("/portfolio/upload")
+def portfolio_upload(payload: PortfolioUpload):
+    """Persist a Schwab CSV to data/portfolio_us.csv and invalidate caches."""
+    from io import StringIO
+    csv_text = payload.csv.strip()
+    if not csv_text:
+        raise HTTPException(status_code=400, detail="empty csv")
+
+    # Validate parseable and has expected columns
+    try:
+        df = pd.read_csv(StringIO(csv_text))
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"invalid csv: {e}")
+    required = {"symbol", "qty", "cost_basis"}
+    if not required.issubset({c.lower() for c in df.columns}):
+        raise HTTPException(status_code=400, detail=f"missing columns: {required}")
+    if len(df) == 0:
+        raise HTTPException(status_code=400, detail="csv has no rows")
+
+    csv_path = os.path.join(os.path.dirname(__file__), "data", "portfolio_us.csv")
+    tmp = f"{csv_path}.tmp"
+    with open(tmp, "w") as f:
+        f.write(csv_text + ("\n" if not csv_text.endswith("\n") else ""))
+    os.replace(tmp, csv_path)
+
+    # Invalidate all caches that depend on portfolio
+    for k in list(_cache.keys()):
+        if k.startswith("asset:") or k in ("briefing", "policy-check", "weekly-committee"):
+            _cache.pop(k, None)
+
+    return {"rows": len(df), "saved_to": csv_path}
 
 
 @app.get("/portfolio/summary")
@@ -526,6 +563,11 @@ def decision_memo(req: DecisionMemoRequest):
     result = get_decision_memo(sym, req.action, req.rationale or "", asset, thesis, policy, b)
     log_decision(sym, req.action, req.rationale or "", result)
     return result
+
+
+@app.get("/decisions")
+def get_decisions(symbol: Optional[str] = None, limit: int = 50):
+    return list_decisions(symbol, limit)
 
 
 # ── Weekly Committee ──────────────────────────────────────────────────────────

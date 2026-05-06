@@ -1825,15 +1825,15 @@ function renderBrasil(data) {
   const fillClass   = onTarget ? "crypto-ok" : "crypto-warn";
 
   const positions = (data.positions || []);
+  const CAT_LABEL = { crypto: "Cripto", fii: "FII", fundo: "Fundo", acao: "Ação", rf: "Renda Fixa" };
   const posRows = positions.map(p => {
     const val = p.valor_investido ?? p.value ?? 0;
-    const categoria = p.categoria || p.category || "";
-    const tipo = categoria || p.tipo || p.type || "";
+    // categoria (e.g. "crypto") prevails over tipo (e.g. "acao") so HASH11 shows as Cripto
+    const cat = (p.categoria || p.category || p.tipo || p.type || "").toLowerCase();
     const retorno = p.return_pct ?? p.retorno_pct ?? null;
-    const catLabel = { crypto: "Cripto", fii: "FII", fundo: "Fundo", acao: "Ação", rf: "Renda Fixa" };
     return `<tr>
       <td><strong>${escapeHtml(p.ticker || p.asset || "")}</strong><br><span style="font-size:11px;color:var(--muted)">${escapeHtml(p.nome || p.name || "")}</span></td>
-      <td><span class="dt-badge ${tipo === "crypto" ? "watch" : "setup"}" style="font-size:10px">${escapeHtml(catLabel[tipo] || tipo)}</span></td>
+      <td><span class="dt-badge ${cat === "crypto" ? "watch" : "setup"}" style="font-size:10px">${escapeHtml(CAT_LABEL[cat] || cat)}</span></td>
       <td style="text-align:right;font-weight:700">R$ ${val ? parseFloat(val).toLocaleString("pt-BR", {maximumFractionDigits:0}) : "—"}</td>
       <td style="text-align:right;color:${retorno == null ? "var(--muted)" : retorno >= 0 ? "var(--success)" : "var(--danger)"};font-weight:700">${retorno != null ? (retorno >= 0 ? "+" : "") + parseFloat(retorno).toFixed(1) + "%" : "—"}</td>
     </tr>`;
@@ -2812,12 +2812,48 @@ document.querySelector("#dm-form")?.addEventListener("submit", async e => {
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "Erro");
     if (result) result.innerHTML = renderDecisionMemo(data);
+    loadDecisionHistory();
   } catch (err) {
     if (result) result.innerHTML = `<p class="muted-note" style="color:var(--danger)">${escapeHtml(err.message)}</p>`;
   } finally {
     btn.disabled = false; btn.textContent = "Analisar";
   }
 });
+
+async function loadDecisionHistory() {
+  const el = document.querySelector("#dh-list");
+  if (!el) return;
+  try {
+    const res = await fetch("/api/py/decisions?limit=30");
+    const rows = await res.json();
+    if (!Array.isArray(rows) || rows.length === 0) {
+      el.innerHTML = `<p class="muted-note">Nenhuma decisão registrada ainda.</p>`;
+      return;
+    }
+    const ACTION_LABEL = { buy:"Comprar", add:"Aumentar", hold:"Manter", reduce:"Reduzir", sell:"Vender" };
+    const VERDICT_CLS  = { ok:"dh-verdict-ok", warning:"dh-verdict-warn", neutral:"dh-verdict-neutral" };
+    el.innerHTML = rows.map(r => {
+      const dt    = new Date(r.created_at).toLocaleString("pt-BR", { day:"2-digit", month:"2-digit", year:"numeric", hour:"2-digit", minute:"2-digit" });
+      const rec   = r.result?.recommendation || {};
+      const cls   = VERDICT_CLS[rec.color] || "dh-verdict-neutral";
+      const why   = r.rationale ? `<p class="dh-rationale">${escapeHtml(r.rationale)}</p>` : "";
+      return `
+        <div class="dh-row">
+          <div class="dh-row-head">
+            <span class="dh-sym">${escapeHtml(r.symbol)}</span>
+            <span class="dh-action">${escapeHtml(ACTION_LABEL[r.action] || r.action)}</span>
+            <span class="dh-verdict ${cls}">${escapeHtml(rec.verdict || "—")}</span>
+            <span class="dh-date">${dt}</span>
+          </div>
+          ${why}
+        </div>`;
+    }).join("");
+  } catch (err) {
+    el.innerHTML = `<p class="muted-note" style="color:var(--danger)">Erro: ${escapeHtml(err.message)}</p>`;
+  }
+}
+
+document.querySelector("#dh-refresh-btn")?.addEventListener("click", loadDecisionHistory);
 
 function renderDecisionMemo(d) {
   const verdictCls = { ok: "dm-ok", warning: "dm-warning", neutral: "dm-neutral" };
@@ -2882,7 +2918,7 @@ document.querySelectorAll(".tab-btn").forEach(btn => {
     if (tab === "daytrade")     loadDayTrade();
     if (tab === "investidores") loadInvestorsAndMacro();
     if (tab === "brasil")       loadBrasil();
-    if (tab === "riskbook")     loadRiskBook();
+    if (tab === "riskbook")     { loadRiskBook(); loadDecisionHistory(); }
     // screener is on-demand (button click)
   });
 });
