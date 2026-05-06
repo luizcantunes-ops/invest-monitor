@@ -1459,18 +1459,43 @@ createServer(async (request, response) => {
   if (url.pathname === "/api/import-portfolio") {
     try {
       const downloadsDir = "/Users/macbook/Downloads";
-      const { readdirSync } = await import("node:fs");
-      const files = readdirSync(downloadsDir)
-        .filter(f => f.startsWith("Individual-Positions-") && f.endsWith(".csv"))
-        .sort().reverse();
-      const csvPath = files.length ? join(downloadsDir, files[0]) : defaultPortfolioPath;
-      const csv = await readFile(csvPath, "utf8");
-      const positions = parsePortfolioCsv(csv).map(p => ({
-        ...p,
-        horizon:  horizonMap[p.symbol] || "swing",
-        strategy: strategyForSymbol(p.symbol)
-      }));
-      sendJson(response, 200, { count: positions.length, positions, source: csvPath });
+      const { readdirSync, existsSync } = await import("node:fs");
+      if (existsSync(downloadsDir)) {
+        const files = readdirSync(downloadsDir)
+          .filter(f => f.startsWith("Individual-Positions-") && f.endsWith(".csv"))
+          .sort().reverse();
+        const csvPath = files.length ? join(downloadsDir, files[0]) : defaultPortfolioPath;
+        const csv = await readFile(csvPath, "utf8");
+        const positions = parsePortfolioCsv(csv).map(p => ({
+          ...p,
+          horizon:  horizonMap[p.symbol] || "swing",
+          strategy: strategyForSymbol(p.symbol)
+        }));
+        sendJson(response, 200, { count: positions.length, positions, source: csvPath });
+        return;
+      }
+      // Production fallback: backend already has portfolio_us.csv via env var
+      const enriched = await proxyPython("/portfolio");
+      const positions = (Array.isArray(enriched) ? enriched : []).map(r => {
+        const symbol = normalizeSymbol(r.symbol);
+        const quantity = Number(r.qty) || 0;
+        const costBasis = Number(r.cost_basis) || 0;
+        const strategy = strategyForSymbol(symbol);
+        return {
+          id: `${symbol}-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+          symbol,
+          type: strategy.type,
+          mandate: strategy.mandate,
+          quantity,
+          average: quantity ? costBasis / quantity : 0,
+          stop: null,
+          target: null,
+          thesis: [r.description, r.sector].filter(Boolean).join(" · "),
+          horizon: r.horizon || horizonMap[symbol] || "swing",
+          strategy,
+        };
+      });
+      sendJson(response, 200, { count: positions.length, positions, source: "backend:/portfolio" });
     } catch (error) {
       sendJson(response, 500, { error: error.message });
     }
