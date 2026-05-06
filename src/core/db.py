@@ -138,3 +138,44 @@ def list_decisions(symbol: str | None = None, limit: int = 50) -> list[dict]:
     except Exception as e:
         logger.error("list_decisions DB error: %s", e)
         return []
+
+
+# ── Market events (intraday stream signals) ──────────────────────────────────
+
+def log_market_event(symbol: str, event_type: str, payload: dict) -> None:
+    try:
+        with _conn() as conn:
+            cur = conn.cursor()
+            cur.execute("""
+                INSERT INTO market_events (symbol, event_type, payload)
+                VALUES (%s, %s, %s)
+            """, (symbol.upper(), event_type, psycopg2.extras.Json(payload)))
+    except Exception as e:
+        logger.error("log_market_event DB error: %s", e)
+
+
+def list_market_events(symbol: str | None = None, event_type: str | None = None, limit: int = 100) -> list[dict]:
+    try:
+        with _conn() as conn:
+            cur = conn.cursor()
+            where, params = [], []
+            if symbol:
+                where.append("symbol = %s")
+                params.append(symbol.upper())
+            if event_type:
+                where.append("event_type = %s")
+                params.append(event_type)
+            sql = "SELECT id, symbol, event_type, payload, triggered_at FROM market_events"
+            if where:
+                sql += " WHERE " + " AND ".join(where)
+            sql += " ORDER BY triggered_at DESC LIMIT %s"
+            params.append(limit)
+            cur.execute(sql, tuple(params))
+            rows = cur.fetchall()
+            return [
+                {**dict(r), "triggered_at": str(r["triggered_at"])}
+                for r in rows
+            ]
+    except Exception as e:
+        logger.error("list_market_events DB error: %s", e)
+        return []

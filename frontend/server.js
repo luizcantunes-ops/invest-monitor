@@ -1272,6 +1272,38 @@ createServer(async (request, response) => {
     return;
   }
 
+  if (url.pathname === "/api/py/stream/intraday") {
+    try {
+      const headers = { "accept": "text/event-stream" };
+      if (INTERNAL_API_TOKEN) headers["x-internal-token"] = INTERNAL_API_TOKEN;
+      const upstream = await fetch(`${PYTHON_API}/stream/intraday`, { headers });
+      if (!upstream.ok || !upstream.body) {
+        sendJson(response, upstream.status || 502, { error: `Stream ${upstream.status}` });
+        return;
+      }
+      response.writeHead(200, {
+        "Content-Type":      "text/event-stream",
+        "Cache-Control":     "no-cache",
+        "Connection":        "keep-alive",
+        "X-Accel-Buffering": "no",
+      });
+      const reader = upstream.body.getReader();
+      const close = () => { try { reader.cancel(); } catch {} };
+      request.on("close", close);
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        if (!response.write(Buffer.from(value))) {
+          await new Promise(r => response.once("drain", r));
+        }
+      }
+      response.end();
+    } catch (e) {
+      try { response.end(); } catch {}
+    }
+    return;
+  }
+
   if (url.pathname === "/api/py/intraday") {
     try { sendJson(response, 200, await proxyPython("/intraday")); }
     catch (e) { sendJson(response, 502, { error: e.message }); }

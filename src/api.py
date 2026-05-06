@@ -6,8 +6,11 @@ logger = logging.getLogger(__name__)
 
 from typing import Optional, List
 
+from contextlib import asynccontextmanager
+import asyncio
+
 from fastapi import FastAPI, HTTPException, Depends, Header
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -31,11 +34,29 @@ from data.config      import (
     MACRO_SHILLER_PE, MACRO_BUFFETT_IND, INTERNAL_API_TOKEN,
 )
 from core.brasil      import get_brasil_summary
-from core.db          import load_policy, save_policy, load_thesis, save_thesis_entry, log_decision, list_decisions
+from core.db          import load_policy, save_policy, load_thesis, save_thesis_entry, log_decision, list_decisions, list_market_events
+from core.intraday_stream import start_stream, stop_stream, get_stream
 
 import pandas as pd
 
-app = FastAPI(title="Investment Monitor API", version="1.0.0")
+
+@asynccontextmanager
+async def _lifespan(app: FastAPI):
+    try:
+        portfolio = _load_portfolio()
+        symbols = [r["symbol"] for r in portfolio if r.get("symbol")]
+    except Exception as e:
+        logger.warning("lifespan: failed to load portfolio for stream: %s", e)
+        symbols = []
+    if symbols:
+        await start_stream(symbols)
+    try:
+        yield
+    finally:
+        await stop_stream()
+
+
+app = FastAPI(title="Investment Monitor API", version="1.0.0", lifespan=_lifespan)
 
 _allowed_origins = [o.strip() for o in os.getenv("ALLOWED_ORIGINS", "http://127.0.0.1:3001").split(",") if o.strip()]
 app.add_middleware(
@@ -501,6 +522,43 @@ def intraday_portfolio():
         except Exception as e:
             results.append({"symbol": row["symbol"], "error": str(e)})
     return results
+
+
+# ── Intraday stream (SSE) ─────────────────────────────────────────────────────
+
+@app.get("/stream/intraday")
+async def stream_intraday():
+    stream = get_stream()
+    if stream is None:
+        raise HTTPException(status_code=503, detail="intraday stream not running")
+
+    queue = stream.subscribe()
+
+    async def event_gen():
+        try:
+            yield "retry: 5000\n\n"
+            yield ": connected\n\n"
+            while True:
+                try:
+                    payload = await asyncio.wait_for(queue.get(), timeout=20.0)
+                    yield f"data: {json.dumps(payload)}\n\n"
+                except asyncio.TimeoutError:
+                    yield ": ping\n\n"
+        except asyncio.CancelledError:
+            raise
+        finally:
+            stream.unsubscribe(queue)
+
+    return StreamingResponse(
+        event_gen(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
+@app.get("/market-events")
+def market_events(symbol: Optional[str] = None, event_type: Optional[str] = None, limit: int = 100):
+    return list_market_events(symbol, event_type, limit)
 
 
 # ── Brasil ────────────────────────────────────────────────────────────────────

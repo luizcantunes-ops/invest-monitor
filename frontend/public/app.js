@@ -2427,9 +2427,39 @@ async function loadInvestorSymbols() {
   } catch (_) {}
 }
 
+let dtStream = null;
+
+function closeDayTradeStream() {
+  if (dtStream) {
+    try { dtStream.close(); } catch (_) {}
+    dtStream = null;
+  }
+}
+
+function openDayTradeStream() {
+  if (dtStream || typeof EventSource === "undefined") return;
+  try {
+    dtStream = new EventSource("/api/py/stream/intraday");
+    dtStream.onmessage = (ev) => {
+      try {
+        const msg = JSON.parse(ev.data);
+        if (msg?.type !== "snapshot" || !msg.data?.symbol) return;
+        const snap = msg.data;
+        if (!Array.isArray(dtData)) dtData = [];
+        const i = dtData.findIndex(d => d.symbol === snap.symbol);
+        if (i >= 0) dtData[i] = { ...dtData[i], ...snap };
+        else dtData.push(snap);
+        renderDayTrade(dtData);
+      } catch (_) {}
+    };
+    dtStream.onerror = () => { closeDayTradeStream(); };
+  } catch (_) { dtStream = null; }
+}
+
 async function loadDayTrade() {
   dtLoading.style.display = "block";
   dtCards.innerHTML = "";
+  closeDayTradeStream();
   try {
     const [res] = await Promise.all([
       fetch("/api/py/intraday"),
@@ -2438,6 +2468,7 @@ async function loadDayTrade() {
     const data = await res.json();
     dtData = data;
     renderDayTrade(data);
+    openDayTradeStream();
   } catch (e) {
     dtLoading.textContent = `Erro: ${e.message}`;
   } finally {
@@ -2911,6 +2942,7 @@ const tabLoaded = {};
 document.querySelectorAll(".tab-btn").forEach(btn => {
   btn.addEventListener("click", () => {
     const tab = btn.dataset.tab;
+    if (tab !== "daytrade") closeDayTradeStream();
     if (tabLoaded[tab]) return;
     tabLoaded[tab] = true;
     if (tab === "hoje")         loadBriefing();
